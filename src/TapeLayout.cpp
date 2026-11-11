@@ -218,14 +218,16 @@ void TapeLayout::drop(WindowId id, double x, double y) {
 }
 
 void TapeLayout::swap(WindowId first, WindowId second) {
+    const auto a = locate(first);
+    const auto b = locate(second);
+    if (a && b) {
+        std::swap(m_rows[a->row].tiles[a->tile], m_rows[b->row].tiles[b->tile]);
+    } else if (a) {
+        m_rows[a->row].tiles[a->tile].id = second;
+    } else if (b) {
+        m_rows[b->row].tiles[b->tile].id = first;
+    }
     for (auto& row : m_rows) {
-        for (auto& tile : row.tiles) {
-            if (tile.id == first) {
-                tile.id = second;
-            } else if (tile.id == second) {
-                tile.id = first;
-            }
-        }
         if (row.focused == first) {
             row.focused = second;
         } else if (row.focused == second) {
@@ -237,6 +239,7 @@ void TapeLayout::swap(WindowId first, WindowId second) {
     } else if (m_active == second) {
         m_active = first;
     }
+    clampOffsets();
 }
 
 void TapeLayout::resize(WindowId id, double width, double height) {
