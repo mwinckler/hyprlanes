@@ -111,9 +111,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("hyprpm reload && hyprctl reload")
 end)
 
--- Load lane shortcuts and the extended layout cycle before personal overrides.
+-- Load lane shortcuts before personal overrides.
 pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/bindings.lua")
-pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/omarchy.lua")
 
 -- Restore saved workspace layouts and other dynamic settings.
 require("default.hypr.toggles")
@@ -121,7 +120,15 @@ require("default.hypr.toggles")
 
 Hyprpm loads enabled plugins after Hyprland starts. The subsequent `hyprctl reload` reapplies plugin settings and restores saved Hyprlanes layouts once the plugin is registered. The `hyprland.start` event runs once per session, so this configuration reload completes the startup sequence.
 
-`bindings.lua` installs layout-aware lane shortcuts, and `omarchy.lua` enables the extended layout cycle. Your personal configuration imports follow this block so your own shortcuts and settings take precedence.
+`bindings.lua` installs layout-aware lane shortcuts. Your personal configuration imports follow this block so your own shortcuts and settings take precedence.
+
+After all personal configuration imports, load the extended layout cycle so it replaces any earlier bindings for its shortcuts:
+
+```lua
+pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/omarchy.lua")
+```
+
+`omarchy.lua` uses `o.rebind(...)` to give each cycling shortcut one action. Use `o.rebind(...)` when replacing a cycle shortcut in your own configuration as well.
 
 For plain Hyprland, use the permission declaration, startup hook, and `bindings.lua` loading call in your Lua configuration. Select Hyprlanes with a [workspace layout rule](#optional-fixed-workspace-layout). Omarchy uses the additional `omarchy.lua` and `default.hypr.toggles` calls to manage its cycling and saved layouts.
 
