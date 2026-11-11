@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+original=omarchy-hyprland-workspace-layout-toggle
+direction=${1:-next}
+
+[[ $direction == next || $direction == back ]] || exec "$original" "$@"
+hyprctl plugin list -j | jq -e 'any(.[]?; .name == "hyprlanes")' >/dev/null 2>&1 || exec "$original" "$@"
+
+read -r workspace layout < <(hyprctl activeworkspace -j | jq -r '[.id, .tiledLayout] | @tsv') || exec "$original" "$@"
+[[ $workspace =~ ^[0-9]+$ ]] || exec "$original" "$@"
+current=$(omarchy-hyprland-workspace-layout-current "$workspace") || exec "$original" "$@"
+
+state_home=${XDG_STATE_HOME:-$HOME/.local/state}
+mode_file="$state_home/omarchy/workspace-layouts/$workspace.lua"
+
+notify_layout() {
+    local state="$state_home/omarchy/workspace-layout-notification"
+    local last=0 id
+    [[ -r $state ]] && { read -r last <"$state" || true; }
+    id=$(omarchy-notification-send -p -r "${last:-0}" -g 󱂬 "$1") && [[ $id =~ ^[0-9]+$ ]] && {
+        mkdir -p "$(dirname "$state")" && printf '%s\n' "$id" >"$state"
+    }
+    return 0
+}
+
+set_layout() {
+    local mode=$1
+    local apply="o.workspace_mode({ workspace = \"$workspace\", mode = \"scrolling\" })"
+    local message unsaved
+    message=$(omarchy-i18n layout.workspaceScrolling)
+    unsaved=$(omarchy-i18n layout.workspaceScrollingUnsaved)
+
+    # Omarchy reads the scrolling anchor from this file when resuming its cycle.
+    # The optional rule restores Hyprlanes while its configuration is registered.
+    [[ $mode == hyprlanes ]] && {
+        apply+=$'\nlocal _, width = pcall(hl.get_config, "plugin:hyprlanes:column_width")\n'
+        apply+="hl.workspace_rule({ workspace = \"$workspace\", layout = type(width) == \"number\" and \"hyprlanes\" or \"scrolling\" })"
+        message="Workspace layout set to hyprlanes"
+        unsaved="Workspace layout set to hyprlanes but could not be saved"
+    }
+
+    hyprctl eval "$apply" >/dev/null || {
+        notify_layout "$(omarchy-i18n layout.needsReload)"
+        return 1
+    }
+
+    # Following the default again releases the workspace's saved override.
+    { [[ $mode == scrolling && $(omarchy-hyprland-workspace-layout-default) == scrolling ]] && rm -f "$mode_file"; } ||
+        { mkdir -p "$(dirname "$mode_file")" && printf '%s\n' "$apply" >"$mode_file"; } || message=$unsaved
+    notify_layout "$message"
+    omarchy-shell -q omarchy.workspaces refresh
+    omarchy-shell -q omarchy.dock refresh
+    return 0
+}
+
+# A floating workspace retains its previous tiled layout, including Hyprlanes.
+[[ $current != floating && $layout == hyprlanes ]] && {
+    [[ $direction == next && $current == scrolling ]] && exec "$original" "$@"
+    set_layout scrolling || exit $?
+    [[ $direction == back ]] && exit 0
+    exec "$original" "$@"
+}
+
+# Let Omarchy perform each backward transition before inserting the extra stop.
+[[ $direction == back ]] && {
+    "$original" "$@" || exit $?
+    [[ $current != scrolling && $(omarchy-hyprland-workspace-layout-current "$workspace") == scrolling ]] || exit 0
+    set_layout hyprlanes
+    exit $?
+}
+
+[[ $current == scrolling && $layout == scrolling ]] && {
+    set_layout hyprlanes
+    exit $?
+}
+
+exec "$original" "$@"
