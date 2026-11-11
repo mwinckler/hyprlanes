@@ -2,25 +2,72 @@
 
 Hyprlanes is a C++ Hyprland layout plugin with independently scrolling horizontal lanes (rows) on a vertically scrolling workspace.
 
-## Build
+## Installation
 
-The plugin is developed against **Hyprland 0.56.2**. Build with matching Hyprland development headers, a C++23 compiler, CMake, pkg-config, and Make.
+Install [hyprpm and its build dependencies](https://wiki.hypr.land/hyprland-plugins/using-plugins/#hyprpm). On Arch Linux and Omarchy, use:
+
+```sh
+sudo pacman -S --needed hyprpm base-devel git cmake cpio meson
+```
+
+Then build and enable Hyprlanes through hyprpm:
+
+```sh
+hyprpm update
+hyprpm add https://github.com/mwinckler/hyprlanes
+hyprpm enable hyprlanes
+hyprpm reload
+```
+
+Hyprlanes **0.1.0** is tested with **Hyprland 0.56.2**. The `hyprpm.toml` manifest on `master` maps supported Hyprland releases to compatible source commits. Hyprpm builds that source against matching Hyprland headers. Additional Hyprland releases require source-compatibility verification as well as rebuilding.
+
+### Install the optional integration files
+
+The supplied Lua files provide lane-aware shortcuts and Omarchy layout cycling. Download the release and install these files for your user:
+
+```sh
+curl -fL -o hyprlanes-0.1.0.tar.gz https://github.com/mwinckler/hyprlanes/archive/refs/tags/v0.1.0.tar.gz
+tar -xzf hyprlanes-0.1.0.tar.gz
+cd hyprlanes-0.1.0
+install -Dm644 examples/bindings.lua "$HOME/.local/share/hyprlanes/bindings.lua"
+install -Dm644 examples/omarchy.lua "$HOME/.local/share/hyprlanes/omarchy.lua"
+install -Dm755 scripts/hyprlanes-layout-cycle "$HOME/.local/bin/hyprlanes-layout-cycle"
+```
+
+Keep `~/.local/bin` on your `PATH` so Omarchy can find the cycle command. It uses Bash, jq, and Omarchy's workspace commands. Load the files using the [persistent configuration](#persistent-configuration) below; personal shortcuts can override the supplied defaults.
+
+## Build from source
+
+For a manual build, use matching Hyprland development headers (0.56.2 or newer), a C++23 compiler, CMake 3.25 or newer, pkg-config, and Make. Run these commands from the source directory:
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j 2
 ```
 
-The output is `build/hyprlanes.so`. Rebuild after upgrading Hyprland; the plugin checks the compositor ABI when loading.
+The output is `build/hyprlanes.so`. The plugin checks the running compositor's build signature, including its commit and supporting-library versions, when loading. Rebuild after upgrading Hyprland or changing those dependencies.
 
-## Try it
-
-Run these commands from the project directory to load the plugin and enable it on workspace 7:
+For a temporary trial, load the compiled plugin:
 
 ```sh
 hyprctl plugin load "$PWD/build/hyprlanes.so"
+```
+
+For persistent use, install the plugin and integration files:
+
+```sh
+cmake --install build --prefix "$HOME/.local" --strip
+```
+
+This installs `~/.local/lib/hyprland/hyprlanes.so` along with the same integration files described above. The [persistent configuration](#persistent-configuration) section includes the loading call for manual builds.
+
+## Try it
+
+Once Hyprlanes is loaded, enable it on workspace 7 and load the installed lane shortcuts:
+
+```sh
 hyprctl eval 'hl.workspace_rule({ workspace = "7", layout = "hyprlanes" })'
-hyprctl eval "dofile('$PWD/examples/bindings.lua')"
+hyprctl eval 'dofile(os.getenv("HOME") .. "/.local/share/hyprlanes/bindings.lua")'
 ```
 
 Switch to workspace 7, open a few windows, and press **Super+Shift+Down** to move the focused window to the lane below, creating one at the bottom edge. Open more windows in that lane to grow its horizontal tape. All shortcuts work directly in your regular keybinding mode.
@@ -42,47 +89,57 @@ Three-finger touchpad swipes scroll horizontally in the row under the pointer an
 
 Moving a window out of a lane and back restores its place beside its former neighbors and its horizontal screen position when possible.
 
-To end this temporary trial, return workspace 7 to Hyprland’s built-in scrolling layout and unload the plugin:
+To end this temporary trial, return workspace 7 to Hyprland’s built-in scrolling layout and reload your regular configuration:
 
 ```sh
 hyprctl eval 'hl.workspace_rule({ workspace = "7", layout = "scrolling" })'
-hyprctl plugin unload "$PWD/build/hyprlanes.so"
 hyprctl reload
 ```
 
+To disable a hyprpm installation, run `hyprpm disable hyprlanes`. For a manually loaded trial, run `hyprctl plugin unload "$PWD/build/hyprlanes.so"` from the source directory.
+
 ## Persistent configuration
 
-For the recommended Omarchy setup, build the plugin and install it for your user:
-
-```sh
-cmake --install build --prefix "$HOME/.local" --strip
-```
-
-This installs the plugin at `~/.local/lib/hyprland/hyprlanes.so`, the lane shortcuts and cycling integration under `~/.local/share/hyprlanes/`, and the cycle command at `~/.local/bin/hyprlanes-layout-cycle`.
-
-In `~/.config/hypr/hyprland.lua`, replace any existing Hyprlanes loading lines and the existing `require("default.hypr.toggles")` line with the following block. Place it after your regular keybindings and personal configuration imports:
+For Omarchy, place this block in `~/.config/hypr/hyprland.lua` immediately after `require("default.hypr.omarchy")`, before your personal configuration imports. Replace any existing Hyprlanes loading lines and the existing `require("default.hypr.toggles")` line with this block:
 
 ```lua
--- Load Hyprlanes, its lane shortcuts, and the extended layout cycle.
-pcall(hl.plugin.load, os.getenv("HOME") .. "/.local/lib/hyprland/hyprlanes.so")
+-- Allow hyprpm to load plugins when permission management is enabled.
+hl.permission("/usr/(bin|local/bin)/hyprpm", "plugin", "allow")
+
+-- Load managed plugins, then apply their configuration and saved layouts.
+hl.on("hyprland.start", function()
+    hl.exec_cmd("hyprpm reload && hyprctl reload")
+end)
+
+-- Load lane shortcuts and the extended layout cycle before personal overrides.
 pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/bindings.lua")
 pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/omarchy.lua")
 
--- Restore saved workspace layouts after registering Hyprlanes.
+-- Restore saved workspace layouts and other dynamic settings.
 require("default.hypr.toggles")
 ```
 
-The first call registers the plugin. `bindings.lua` installs the layout-aware lane shortcuts, and `omarchy.lua` enables the extended layout cycle. Hyprland reads this configuration at startup and on reload. Loading the plugin before `default.hypr.toggles` lets Omarchy restore saved Hyprlanes selections.
+Hyprpm loads enabled plugins after Hyprland starts. The subsequent `hyprctl reload` reapplies plugin settings and restores saved Hyprlanes layouts once the plugin is registered. The `hyprland.start` event runs once per session, so this configuration reload completes the startup sequence.
+
+`bindings.lua` installs layout-aware lane shortcuts, and `omarchy.lua` enables the extended layout cycle. Your personal configuration imports follow this block so your own shortcuts and settings take precedence.
+
+For plain Hyprland, use the permission declaration, startup hook, and `bindings.lua` loading call in your Lua configuration. Select Hyprlanes with a [workspace layout rule](#optional-fixed-workspace-layout). Omarchy uses the additional `omarchy.lua` and `default.hypr.toggles` calls to manage its cycling and saved layouts.
 
 `pcall(fn, ...)` runs a protected Lua call and returns its success flag and result or error. This lets configuration loading continue when the plugin or integration files are unavailable. These examples discard those return values; use a direct call or inspect the returned error when diagnosing a load failure.
 
-For development, you can point the first call at your source-tree build instead:
+For a manual installation, replace the permission declaration and startup hook with a synchronous load before the integration files and saved layouts:
+
+```lua
+pcall(hl.plugin.load, os.getenv("HOME") .. "/.local/lib/hyprland/hyprlanes.so")
+```
+
+For development, point that call at your source-tree build:
 
 ```lua
 pcall(hl.plugin.load, "/absolute/path/to/hyprlanes/build/hyprlanes.so")
 ```
 
-The installed Lua files work with either binary location. Keep one plugin-loading call, using the path you chose. After rebuilding, rerun the installation command to update installed files; unload and reload the plugin to activate an updated binary.
+The installed Lua files work with either loading method. Use the startup hook for hyprpm or a direct loading call for manual builds. After rebuilding manually, rerun the installation command to update installed files; unload and reload the plugin to activate an updated binary.
 
 Apply the configuration and check that Hyprlanes appears in the plugin list:
 
@@ -96,7 +153,7 @@ Choose Hyprlanes with **Super+Shift+Ctrl+L** or **Super+Alt+L**. Omarchy saves a
 
 ### Optional settings
 
-To override the defaults, add this settings block immediately after the plugin-loading call, before saved workspace layouts are restored. The values shown are the defaults:
+To override the defaults, add this settings block after the startup hook or direct plugin-loading call, before saved workspace layouts are restored. The values shown are the defaults:
 
 ```lua
 pcall(hl.config, {
@@ -115,13 +172,28 @@ pcall(hl.config, {
 
 ### Optional fixed workspace layout
 
-To pin a workspace’s tiled layout to Hyprlanes, add an explicit rule after `require("default.hypr.toggles")`, using your preferred workspace number:
+To pin a workspace’s tiled layout to Hyprlanes, add an explicit rule after your plugin settings and any saved-layout restoration, using your preferred workspace number:
 
 ```lua
-hl.workspace_rule({ workspace = "7", layout = "hyprlanes" })
+pcall(hl.workspace_rule, { workspace = "7", layout = "hyprlanes" })
 ```
 
 This fixed rule takes precedence over saved layout selections on each reload. Use the cycle to manage workspaces whose layout should change interactively.
+
+## Updating
+
+After upgrading Hyprland and starting the updated session, rebuild the managed plugins and activate the new binaries:
+
+```sh
+hyprpm update
+hyprpm reload -f
+hyprctl reload
+hyprctl configerrors
+```
+
+Use the same commands to receive compatible Hyprlanes updates. The forced plugin reload activates rebuilt binaries even when an older copy is already loaded. Download the desired release and repeat the integration-file installation commands to update the companion files. Keep custom bindings in your personal configuration or a personal copy of the Lua files.
+
+Release maintainers can follow [RELEASING.md](RELEASING.md) to validate a new version, tag its source, and update compatibility pins.
 
 ## Custom shortcuts
 
