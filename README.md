@@ -2,7 +2,7 @@
 
 Hyprlanes is a Hyprland layout plugin that arranges windows in horizontal lanes. Each lane scrolls independently from side to side, and the workspace scrolls up and down between lanes.
 
-Hyprlanes **0.1.0** is tested with **Hyprland 0.56.2**. The setup examples below use Hyprland’s Lua configuration.
+Hyprlanes **0.1.1** is tested with **Hyprland 0.56.2**. The setup examples below use Hyprland’s Lua configuration.
 
 ## Installation
 
@@ -31,9 +31,9 @@ hyprpm reload
 For a manual build, install development headers matching your running Hyprland, a C++23 compiler, CMake 3.25 or newer, pkg-config, and Make. Download the source release, build it, and install it for your user:
 
 ```sh
-curl -fL -o hyprlanes-0.1.0.tar.gz https://github.com/mwinckler/hyprlanes/archive/refs/tags/v0.1.0.tar.gz
-tar -xzf hyprlanes-0.1.0.tar.gz
-cd hyprlanes-0.1.0
+curl -fL -o hyprlanes-0.1.1.tar.gz https://github.com/mwinckler/hyprlanes/archive/refs/tags/v0.1.1.tar.gz
+tar -xzf hyprlanes-0.1.1.tar.gz
+cd hyprlanes-0.1.1
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j 2
 cmake --install build --prefix "$HOME/.local" --strip
@@ -49,9 +49,9 @@ This also installs the shortcuts and Omarchy integration, so continue with [Try 
 Install the supplied keyboard shortcuts and Omarchy layout-cycle integration:
 
 ```sh
-curl -fL -o hyprlanes-0.1.0.tar.gz https://github.com/mwinckler/hyprlanes/archive/refs/tags/v0.1.0.tar.gz
-tar -xzf hyprlanes-0.1.0.tar.gz
-cd hyprlanes-0.1.0
+curl -fL -o hyprlanes-0.1.1.tar.gz https://github.com/mwinckler/hyprlanes/archive/refs/tags/v0.1.1.tar.gz
+tar -xzf hyprlanes-0.1.1.tar.gz
+cd hyprlanes-0.1.1
 install -Dm644 examples/bindings.lua "$HOME/.local/share/hyprlanes/bindings.lua"
 install -Dm644 examples/omarchy.lua "$HOME/.local/share/hyprlanes/omarchy.lua"
 install -Dm755 scripts/hyprlanes-layout-cycle "$HOME/.local/bin/hyprlanes-layout-cycle"

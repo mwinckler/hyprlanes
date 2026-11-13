@@ -32,5 +32,5 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         !HyprlandAPI::addTiledAlgo(handle, "hyprlanes", &typeid(Hyprlanes::Algorithm), [] { return makeUnique<Hyprlanes::Algorithm>(); })) {
         throw std::runtime_error("Failed to register the hyprlanes layout.");
     }
-    return {"hyprlanes", "Independent horizontal scrolling rows on a vertically scrolling workspace.", "Hyprlanes contributors", "0.1.0"};
+    return {"hyprlanes", "Independent horizontal scrolling rows on a vertically scrolling workspace.", "Hyprlanes contributors", "0.1.1"};
 }

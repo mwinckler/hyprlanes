@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(hyprlanes VERSION 0.1.0 LANGUAGES CXX)
+project(hyprlanes VERSION 0.1.1 LANGUAGES CXX)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(HYPRLAND REQUIRED IMPORTED_TARGET hyprland>=0.56.2)
