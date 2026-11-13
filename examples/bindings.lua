@@ -19,6 +19,8 @@ bind("SUPER + SHIFT + LEFT", "move left", hl.dsp.window.swap({ direction = "l" }
 bind("SUPER + SHIFT + RIGHT", "move right", hl.dsp.window.swap({ direction = "r" }))
 bind("SUPER + SHIFT + UP", "move up", hl.dsp.window.swap({ direction = "u" }))
 bind("SUPER + SHIFT + DOWN", "move down", hl.dsp.window.swap({ direction = "d" }))
+bind("SUPER + SHIFT + K", "move up", hl.dsp.window.swap({ direction = "u" }))
+bind("SUPER + SHIFT + J", "move down", hl.dsp.window.swap({ direction = "d" }))
 
 -- Ctrl inserts a new lane above or below the current one.
 bind("SUPER + CTRL + UP", "newrow up")

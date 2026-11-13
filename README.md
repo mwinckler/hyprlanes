@@ -147,13 +147,13 @@ hyprctl plugin list
 
 ## Keyboard shortcuts and gestures
 
-The supplied focus, window-swap, and resize shortcuts adapt to the active layout. On other layouts and floating windows, these shortcuts use standard Hyprland actions.
+The supplied focus, window-movement, and resize shortcuts adapt to the active layout. On other layouts and floating windows, these shortcuts use standard Hyprland actions.
 
 | Keys | Action |
 | --- | --- |
 | `Super+Left/Right/Up/Down` | Move focus within a lane or to the last-focused window in an adjacent lane. |
 | `Super+Shift+Left/Right` | Move the focused window left or right within its lane. |
-| `Super+Shift+Up/Down` | Move the focused window to the lane above or below, creating one at the top or bottom edge. |
+| `Super+Shift+Up/Down` / `Super+Shift+K/J` | Move the focused window to the lane above or below, creating one at the top or bottom edge. |
 | `Super+Ctrl+Up/Down` | Move the focused window into a new lane above or below. |
 | `Super+-` / `Super+=` | Decrease or increase the focused window’s width. |
 | `Super+Shift+-` / `Super+Shift+=` | Decrease or increase the focused lane’s height. |
