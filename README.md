@@ -1,16 +1,22 @@
 # Hyprlanes
 
-Hyprlanes is a C++ Hyprland layout plugin with independently scrolling horizontal lanes (rows) on a vertically scrolling workspace.
+Hyprlanes is a Hyprland layout plugin that arranges windows in horizontal lanes. Each lane scrolls independently from side to side, and the workspace scrolls up and down between lanes.
+
+Hyprlanes **0.1.0** is tested with **Hyprland 0.56.2**. The setup examples below use Hyprland’s Lua configuration.
 
 ## Installation
 
-Install [hyprpm and its build dependencies](https://wiki.hypr.land/hyprland-plugins/using-plugins/#hyprpm). On Arch Linux and Omarchy, use:
+### 1. Install the plugin
+
+Use **hyprpm** for the simplest installation and updates. On Arch Linux and Omarchy, install the build tools and the utilities used below:
 
 ```sh
-sudo pacman -S --needed hyprpm base-devel git cmake cpio meson
+sudo pacman -S --needed hyprpm base-devel git cmake cpio meson curl jq
 ```
 
-Then build and enable Hyprlanes through hyprpm:
+On other distributions, install `curl` and `jq`, then follow [Hyprland’s hyprpm instructions](https://wiki.hypr.land/hyprland-plugins/using-plugins/#hyprpm).
+
+Build and enable Hyprlanes:
 
 ```sh
 hyprpm update
@@ -19,11 +25,28 @@ hyprpm enable hyprlanes
 hyprpm reload
 ```
 
-Hyprlanes **0.1.0** is tested with **Hyprland 0.56.2**. The `hyprpm.toml` manifest on `master` maps supported Hyprland releases to compatible source commits. Hyprpm builds that source against matching Hyprland headers. Additional Hyprland releases require source-compatibility verification as well as rebuilding.
+<details>
+<summary>You can build and install from source instead.</summary>
 
-### Install the optional integration files
+For a manual build, install development headers matching your running Hyprland, a C++23 compiler, CMake 3.25 or newer, pkg-config, and Make. Download the source release, build it, and install it for your user:
 
-The supplied Lua files provide lane-aware shortcuts and Omarchy layout cycling. Download the release and install these files for your user:
+```sh
+curl -fL -o hyprlanes-0.1.0.tar.gz https://github.com/mwinckler/hyprlanes/archive/refs/tags/v0.1.0.tar.gz
+tar -xzf hyprlanes-0.1.0.tar.gz
+cd hyprlanes-0.1.0
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j 2
+cmake --install build --prefix "$HOME/.local" --strip
+hyprctl plugin load "$HOME/.local/lib/hyprland/hyprlanes.so"
+```
+
+This also installs the shortcuts and Omarchy integration, so continue with [Try it](#try-it). For permanent setup, use the [manual plugin-loading call](#manual-installations).
+
+</details>
+
+### 2. Install the shortcuts
+
+Install the supplied keyboard shortcuts and Omarchy layout-cycle integration:
 
 ```sh
 curl -fL -o hyprlanes-0.1.0.tar.gz https://github.com/mwinckler/hyprlanes/archive/refs/tags/v0.1.0.tar.gz
@@ -34,79 +57,43 @@ install -Dm644 examples/omarchy.lua "$HOME/.local/share/hyprlanes/omarchy.lua"
 install -Dm755 scripts/hyprlanes-layout-cycle "$HOME/.local/bin/hyprlanes-layout-cycle"
 ```
 
-Keep `~/.local/bin` on your `PATH` so Omarchy can find the cycle command. It uses Bash, jq, and Omarchy's workspace commands. Load the files using the [persistent configuration](#persistent-configuration) below; personal shortcuts can override the supplied defaults.
-
-## Build from source
-
-For a manual build, use matching Hyprland development headers (0.56.2 or newer), a C++23 compiler, CMake 3.25 or newer, pkg-config, and Make. Run these commands from the source directory:
-
-```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j 2
-```
-
-The output is `build/hyprlanes.so`. The plugin checks the running compositor's build signature, including its commit and supporting-library versions, when loading. Rebuild after upgrading Hyprland or changing those dependencies.
-
-For a temporary trial, load the compiled plugin:
-
-```sh
-hyprctl plugin load "$PWD/build/hyprlanes.so"
-```
-
-For persistent use, install the plugin and integration files:
-
-```sh
-cmake --install build --prefix "$HOME/.local" --strip
-```
-
-This installs `~/.local/lib/hyprland/hyprlanes.so` along with the same integration files described above. The [persistent configuration](#persistent-configuration) section includes the loading call for manual builds.
+For Omarchy layout cycling, keep `~/.local/bin` on your session’s `PATH`. The helper uses Bash, jq, and Omarchy’s workspace commands.
 
 ## Try it
 
-Once Hyprlanes is loaded, enable it on workspace 7 and load the installed lane shortcuts:
+Try Hyprlanes on workspace 7 before changing your configuration:
 
 ```sh
 hyprctl eval 'hl.workspace_rule({ workspace = "7", layout = "hyprlanes" })'
 hyprctl eval 'dofile(os.getenv("HOME") .. "/.local/share/hyprlanes/bindings.lua")'
 ```
 
-Switch to workspace 7, open a few windows, and press **Super+Shift+Down** to move the focused window to the lane below, creating one at the bottom edge. Open more windows in that lane to grow its horizontal tape. All shortcuts work directly in your regular keybinding mode.
+Switch to workspace 7 and open a few windows. Press **Super+Shift+Down** to move the focused window into a new lane below. Open more windows to fill that lane, then use **Super+arrow keys** to move between windows and lanes. You can also scroll with three-finger touchpad swipes.
 
-| Keys | Action |
-| --- | --- |
-| `Super+Left/Right/Up/Down` | Move focus within a lane or to the remembered window in an adjacent lane. |
-| `Super+Shift+Left/Right` | Move the focused window left/right within its lane. |
-| `Super+Shift+Up/Down` | Move the focused window to the lane above/below, creating a lane at a vertical edge. |
-| `Super+Ctrl+Up/Down` | Move the focused window into a new lane above/below. |
-| `Super+-` / `Super+=` | Decrease/increase the focused window’s width. |
-| `Super+Shift+-` / `Super+Shift+=` | Decrease/increase the focused lane’s height. |
-| `Super+Alt+C` | Center the focused window within the available scroll range. |
-| `Super+F` | Toggle fullscreen. |
-
-The example replaces the usual Super+arrow focus bindings, Super+Shift+arrow window-swap bindings, and Super+minus/equal resize bindings with layout-aware actions. These use lane commands for tiled windows on Hyprlanes workspaces and standard Hyprland actions on other layouts or floating windows. Super+Ctrl+Up/Down applies to tiled Hyprlanes windows. Super+Alt+C also centers floating windows.
-
-Three-finger touchpad swipes scroll horizontally in the row under the pointer and vertically through the workspace. Gestures follow `input.touchpad.natural_scroll`. Keyboard navigation centers the focused lane vertically, brings its focused window into view horizontally, and remembers the last-focused window in each row. The first and last lanes can also be centered, including a workspace with a single lane.
-
-Moving a window out of a lane and back restores its place beside its former neighbors and its horizontal screen position when possible.
-
-To end this temporary trial, return workspace 7 to Hyprland’s built-in scrolling layout and reload your regular configuration:
+To end the trial, switch workspace 7 to Hyprland’s built-in scrolling layout and restore your regular shortcuts:
 
 ```sh
 hyprctl eval 'hl.workspace_rule({ workspace = "7", layout = "scrolling" })'
 hyprctl reload
 ```
 
-To disable a hyprpm installation, run `hyprpm disable hyprlanes`. For a manually loaded trial, run `hyprctl plugin unload "$PWD/build/hyprlanes.so"` from the source directory.
+To load Hyprlanes automatically and keep the shortcuts, follow the setup below.
 
-## Persistent configuration
+## Setup
 
-For Omarchy, place this block in `~/.config/hypr/hyprland.lua` immediately after `require("default.hypr.omarchy")`, before your personal configuration imports. Replace any existing Hyprlanes loading lines and the existing `require("default.hypr.toggles")` line with this block:
+Choose the instructions for **Omarchy** or **plain Hyprland**. Both examples use hyprpm; source builds use the replacement shown under [Manual installations](#manual-installations).
+
+### Omarchy
+
+Edit `~/.config/hypr/hyprland.lua` in two places, keeping your existing bootstrap and personal configuration:
+
+1. Add this block immediately after `require("default.hypr.omarchy")`, before your personal imports. Move the existing `require("default.hypr.toggles")` line into this block so it appears once, and replace any older Hyprlanes loading lines.
 
 ```lua
--- Allow hyprpm to load plugins when permission management is enabled.
+-- Allow hyprpm to load plugins.
 hl.permission("/usr/(bin|local/bin)/hyprpm", "plugin", "allow")
 
--- Load managed plugins, then apply their configuration and saved layouts.
+-- Load plugins at login, then apply their settings and saved layouts.
 hl.on("hyprland.start", function()
     hl.exec_cmd("hyprpm reload && hyprctl reload")
 end)
@@ -114,41 +101,43 @@ end)
 -- Load lane shortcuts before personal overrides.
 pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/bindings.lua")
 
--- Restore saved workspace layouts and other dynamic settings.
+-- Restore Omarchy’s saved layouts and other dynamic settings.
 require("default.hypr.toggles")
 ```
 
-Hyprpm loads enabled plugins after Hyprland starts. The subsequent `hyprctl reload` reapplies plugin settings and restores saved Hyprlanes layouts once the plugin is registered. The `hyprland.start` event runs once per session, so this configuration reload completes the startup sequence.
-
-`bindings.lua` installs layout-aware lane shortcuts. Your personal configuration imports follow this block so your own shortcuts and settings take precedence.
-
-After all personal configuration imports, load the extended layout cycle so it replaces any earlier bindings for its shortcuts:
+2. Add this line at the end of the file, after all personal imports and settings, to enable Hyprlanes in Omarchy’s layout cycle.
 
 ```lua
 pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/omarchy.lua")
 ```
 
-`omarchy.lua` uses `o.rebind(...)` to give each cycling shortcut one action. Use `o.rebind(...)` when replacing a cycle shortcut in your own configuration as well.
+Use **Super+Shift+Ctrl+L** to cycle forward or **Super+Alt+L** to cycle backward through **dwindle → scrolling → hyprlanes → floating**. Omarchy saves the selection for each workspace and restores it when you log in.
 
-For plain Hyprland, use the permission declaration, startup hook, and `bindings.lua` loading call in your Lua configuration. Select Hyprlanes with a [workspace layout rule](#optional-fixed-workspace-layout). Omarchy uses the additional `omarchy.lua` and `default.hypr.toggles` calls to manage its cycling and saved layouts.
+### Plain Hyprland
 
-`pcall(fn, ...)` runs a protected Lua call and returns its success flag and result or error. This lets configuration loading continue when the plugin or integration files are unavailable. These examples discard those return values; use a direct call or inspect the returned error when diagnosing a load failure.
+Add this to `~/.config/hypr/hyprland.lua` after your regular keybindings. Change `7` to your preferred workspace:
 
-For a manual installation, replace the permission declaration and startup hook with a synchronous load before the integration files and saved layouts:
+```lua
+hl.permission("/usr/(bin|local/bin)/hyprpm", "plugin", "allow")
+hl.on("hyprland.start", function()
+    hl.exec_cmd("hyprpm reload && hyprctl reload")
+end)
+
+pcall(dofile, os.getenv("HOME") .. "/.local/share/hyprlanes/bindings.lua")
+pcall(hl.workspace_rule, { workspace = "7", layout = "hyprlanes" })
+```
+
+### Manual installations
+
+In either setup above, replace the `hl.permission(...)` declaration and `hl.on(...)` startup hook with this line, before the shortcuts and saved layouts:
 
 ```lua
 pcall(hl.plugin.load, os.getenv("HOME") .. "/.local/lib/hyprland/hyprlanes.so")
 ```
 
-For development, point that call at your source-tree build:
+### Apply and check your configuration
 
-```lua
-pcall(hl.plugin.load, "/absolute/path/to/hyprlanes/build/hyprlanes.so")
-```
-
-The installed Lua files work with either loading method. Use the startup hook for hyprpm or a direct loading call for manual builds. After rebuilding manually, rerun the installation command to update installed files; unload and reload the plugin to activate an updated binary.
-
-Apply the configuration and check that Hyprlanes appears in the plugin list:
+Reload your configuration, check for errors, and confirm that `hyprlanes` appears in the plugin list:
 
 ```sh
 hyprctl reload
@@ -156,11 +145,28 @@ hyprctl configerrors
 hyprctl plugin list
 ```
 
-Choose Hyprlanes with **Super+Shift+Ctrl+L** or **Super+Alt+L**. Omarchy saves and restores the selected layout. Remove any existing fixed `hl.workspace_rule(...)` layout rules for workspaces managed by the cycle so their saved selections control the layout.
+## Keyboard shortcuts and gestures
 
-### Optional settings
+The supplied focus, window-swap, and resize shortcuts adapt to the active layout. On other layouts and floating windows, these shortcuts use standard Hyprland actions.
 
-To override the defaults, add this settings block after the startup hook or direct plugin-loading call, before saved workspace layouts are restored. The values shown are the defaults:
+| Keys | Action |
+| --- | --- |
+| `Super+Left/Right/Up/Down` | Move focus within a lane or to the last-focused window in an adjacent lane. |
+| `Super+Shift+Left/Right` | Move the focused window left or right within its lane. |
+| `Super+Shift+Up/Down` | Move the focused window to the lane above or below, creating one at the top or bottom edge. |
+| `Super+Ctrl+Up/Down` | Move the focused window into a new lane above or below. |
+| `Super+-` / `Super+=` | Decrease or increase the focused window’s width. |
+| `Super+Shift+-` / `Super+Shift+=` | Decrease or increase the focused lane’s height. |
+| `Super+Alt+C` | Center the focused window within the available scroll range. |
+| `Super+F` | Toggle fullscreen. |
+
+Three-finger touchpad swipes scroll horizontally in the lane under the pointer and vertically through the workspace. Gestures follow `input.touchpad.natural_scroll`.
+
+Keyboard navigation brings the focused window into view and centers its lane vertically. Each lane remembers its last-focused window. Moving a window out of a lane and back restores its place and horizontal position when possible.
+
+## Settings
+
+The defaults work out of the box. To customize them, add this block after plugin loading and before saved layouts or workspace rules:
 
 ```lua
 pcall(hl.config, {
@@ -175,21 +181,26 @@ pcall(hl.config, {
 })
 ```
 
-`column_width` sets the width of new windows, and `row_height` sets the initial row height when switching to Hyprlanes or opening the first window in an empty workspace. A configured `row_height` overrides the `0.95` default. New rows created by moving a window inherit the source row’s current height. Both settings accept fractions from `0.1` to `1.0` of the usable monitor area. `gesture_fingers` accepts `0` through `5`, with `0` disabling gesture handling. `gesture_sensitivity` accepts `0.1` through `10.0`.
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `column_width` | `0.5` | Set new window widths as a fraction of the usable monitor width, from `0.1` to `1.0`. |
+| `row_height` | `0.95` | Set the initial lane height as a fraction of the usable monitor height, from `0.1` to `1.0`. |
+| `gesture_fingers` | `3` | Set the swipe finger count from `0` to `5`; use `0` to disable gestures. |
+| `gesture_sensitivity` | `1.0` | Set the gesture scroll speed from `0.1` to `10.0`. |
 
-### Optional fixed workspace layout
+The initial lane height applies when switching to Hyprlanes or opening the first window on an empty workspace. New lanes created by moving a window inherit the source lane’s current height.
 
-To pin a workspace’s tiled layout to Hyprlanes, add an explicit rule after your plugin settings and any saved-layout restoration, using your preferred workspace number:
+To keep a workspace on Hyprlanes, add a rule after plugin settings and saved-layout restoration:
 
 ```lua
 pcall(hl.workspace_rule, { workspace = "7", layout = "hyprlanes" })
 ```
 
-This fixed rule takes precedence over saved layout selections on each reload. Use the cycle to manage workspaces whose layout should change interactively.
+A fixed rule takes precedence on every reload. For workspaces managed by Omarchy’s layout cycle, remove fixed layout rules so the saved selection takes effect.
 
 ## Updating
 
-After upgrading Hyprland and starting the updated session, rebuild the managed plugins and activate the new binaries:
+To update Hyprlanes, run the commands below. After a Hyprland upgrade, log into the updated session first.
 
 ```sh
 hyprpm update
@@ -198,51 +209,30 @@ hyprctl reload
 hyprctl configerrors
 ```
 
-Use the same commands to receive compatible Hyprlanes updates. The forced plugin reload activates rebuilt binaries even when an older copy is already loaded. Download the desired release and repeat the integration-file installation commands to update the companion files. Keep custom bindings in your personal configuration or a personal copy of the Lua files.
+To update the shortcuts and Omarchy integration, repeat [installation step 2](#2-install-the-shortcuts) with your desired release. Keep personal changes in your own configuration or a personal copy of the Lua files.
 
-Release maintainers can follow [RELEASING.md](RELEASING.md) to validate a new version, tag its source, and update compatibility pins.
+For manual builds, rebuild against matching Hyprland headers and rerun the installation command. Log out and back in, or unload and reload the plugin, to activate the new binary.
+
+## Troubleshooting
+
+- If the plugin fails to load after an upgrade, start the updated Hyprland session and run the [update commands](#updating).
+- If shortcuts are missing, run the `dofile(...)` command under [Try it](#try-it) to see any file-loading errors.
+- If Omarchy’s layout cycle skips Hyprlanes, check `hyprctl plugin list` and `command -v hyprlanes-layout-cycle`. The helper must be on your session’s `PATH`.
+- If a workspace keeps reverting to one layout, check for a fixed `hl.workspace_rule(...)` overriding Omarchy’s saved selection.
+
+To disable a hyprpm installation, run `hyprpm disable hyprlanes`. Remove the Hyprlanes Lua-file loading lines and any fixed Hyprlanes workspace rules from your configuration, then run `hyprctl reload`.
 
 ## Custom shortcuts
 
-Every lane command is user-bindable through `hl.dsp.layout(...)`. Edit a personal copy of `bindings.lua` and update its loading path to customize the keys while keeping its layout-aware routing, or replace its `pcall(dofile, ...)` line with your own bindings:
+Copy [examples/bindings.lua](examples/bindings.lua), edit the keys, and update the `pcall(dofile, ...)` path in your configuration to load your copy. This preserves lane-aware navigation and the standard actions for other layouts. Use `hl.unbind(...)` before replacing an existing shortcut.
 
-```lua
-local function lane_focus(direction)
-    return function()
-        local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
-        local window = hl.get_active_window()
-        local in_lane = workspace and workspace.tiled_layout == "hyprlanes" and window and not window.floating
-        hl.dispatch(in_lane and hl.dsp.layout("focus " .. direction) or hl.dsp.focus({ direction = direction }))
-    end
-end
+For different Omarchy layout-cycle shortcuts, customize a copy of [examples/omarchy.lua](examples/omarchy.lua) and update its loading path. Use `o.rebind(...)` when replacing these shortcuts.
 
-hl.unbind("SUPER + H")
-hl.bind("SUPER + H", lane_focus("l"))
-hl.unbind("SUPER + J")
-hl.bind("SUPER + J", lane_focus("d"))
-hl.unbind("SUPER + K")
-hl.bind("SUPER + K", lane_focus("u"))
-hl.unbind("SUPER + L")
-hl.bind("SUPER + L", lane_focus("r"))
-```
-
-Super+H and Super+L move focus within the current lane and stop at its left or right edge. Super+J and Super+K focus the remembered window in the adjacent lane regardless of its horizontal position. These bindings use standard directional focus on other layouts and floating windows. `hl.dsp.focus(...)` uses Hyprland’s spatial navigation; custom lane-focus shortcuts should route all four directions through Hyprlanes’ `focus left/right/up/down` layout commands, as shown above.
-
-Other commands, such as `hl.dsp.layout("move down")` and `hl.dsp.layout("newrow down")`, are directly bindable and act on the active workspace’s layout. Use `hl.unbind(...)` before replacing an existing shortcut so each keypress runs one action.
-
-## Omarchy layout cycling
-
-`hyprlanes-layout-cycle [next|back]` extends Omarchy’s workspace cycle to **dwindle → scrolling → hyprlanes → floating** while Hyprlanes is loaded. It delegates the built-in transitions to `omarchy-hyprland-workspace-layout-toggle`, including Omarchy’s floating-window handling, notifications, and workspace state. The `back` argument traverses the same cycle in reverse.
-
-The [persistent configuration](#persistent-configuration) above enables this integration. `omarchy.lua` replaces Super+Shift+Ctrl+L’s forward layout cycle and Super+Alt+L’s backward layout cycle with the extended cycle. To choose other shortcuts, edit a personal copy of `omarchy.lua` and update its loading path. Run `hyprctl reload` and `hyprctl configerrors` after updating your configuration.
-
-Returning to the global default clears the saved workspace override, so the workspace follows that default across reloads.
-
-While Hyprlanes is unavailable, the integration uses Omarchy’s original cycling command and restores saved Hyprlanes selections as scrolling. Removing `hyprlanes-layout-cycle` also restores the original command through the binding’s availability check; removing the integration file lets your regular bindings take effect on the next reload.
+After changing shortcuts, run `hyprctl reload` and `hyprctl configerrors`.
 
 ## Layout commands
 
-Commands work with `hl.dsp.layout(...)` in keybindings or through the CLI:
+For custom bindings, pass these commands to `hl.dsp.layout(...)`. You can also run them from a terminal:
 
 ```sh
 hyprctl dispatch 'hl.dsp.layout("newrow down")'
@@ -252,16 +242,14 @@ hyprctl dispatch 'hl.dsp.layout("scroll 0.25 0")'
 
 | Command | Behavior |
 | --- | --- |
-| `focus left/right/up/down` | Focus the adjacent window or the remembered window in an adjacent row. |
-| `move left/right/up/down` | Reorder a window or transfer it to an adjacent row, creating a row at a vertical edge. |
-| `newrow up/down` | Extract the focused window into a new adjacent row. |
+| `focus left/right/up/down` | Focus the adjacent window or the last-focused window in an adjacent lane. |
+| `move left/right/up/down` | Reorder a window or move it to an adjacent lane, creating one at the top or bottom edge. |
+| `newrow up/down` | Move the focused window into a new adjacent lane. |
 | `width 0.5` / `width +0.1` | Set or adjust the focused window’s width. |
-| `height 0.5` / `height +0.1` | Set or adjust the focused row’s height. |
-| `scroll dx dy` | Move the active row’s horizontal camera and workspace’s vertical camera by viewport fractions. |
-| `center` | Center the focused window within the scrollable extent. |
+| `height 0.5` / `height +0.1` | Set or adjust the focused lane’s height. |
+| `scroll dx dy` | Scroll horizontally and vertically by fractions of the visible workspace. |
+| `center` | Center the focused window within the available scroll range. |
 
 The directional commands also accept `l`, `r`, `u`, and `d`. Standard Hyprland resizing, floating, grouping, workspace transfers, and fullscreen handling remain available.
 
-## Implementation
-
-`src/TapeLayout.cpp` owns the rows, sizes, camera offsets, and navigation in normalized coordinates. `src/Hyprlanes.cpp` connects that model to Hyprland’s tiling algorithm and input events. Hyprland handles window animation, decorations, monitor clipping, and fullscreen presentation.
+For release instructions, see [RELEASING.md](RELEASING.md).
