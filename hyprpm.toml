@@ -2,8 +2,8 @@
 name = "hyprlanes"
 authors = ["Matt Winckler"]
 commit_pins = [
-    # Hyprland 0.56.2 uses the Hyprlanes 0.1.0 source release.
-    ["efb50993780079460b0cbed1363e2166a2de1d9f", "db4aaac45849fa752bd1d5fda576da9cb03dd345"],
+    # Hyprland 0.56.2 uses the Hyprlanes 0.1.1 source release.
+    ["efb50993780079460b0cbed1363e2166a2de1d9f", "8d360263d3daf040dd2f7736f8da5f307c33358d"],
 ]
 
 [hyprlanes]
