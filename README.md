@@ -2,6 +2,8 @@
 
 Hyprlanes is a Hyprland layout plugin that arranges windows in horizontal lanes. Each lane scrolls independently from side to side, and the workspace scrolls up and down between lanes.
 
+![Demo](./hyprlanes-demo.mp4)
+
 Hyprlanes **0.1.1** is tested with **Hyprland 0.56.2**. The setup examples below use Hyprland’s Lua configuration.
 
 ## Installation
